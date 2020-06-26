@@ -237,6 +237,10 @@ protected
     IBPSA.BoundaryConditions.WeatherData.BaseClasses.getTimeSpanTMY3(filNam, "tab1")
   "Start time, end time of weather data";
 
+  final parameter Modelica.SIunits.Time timeStep=
+    IBPSA.BoundaryConditions.WeatherData.BaseClasses.getTimeStepTMY3(filNam, "tab1")
+  "Average time interval of weather data";
+
   Modelica.Blocks.Tables.CombiTable1Ds datRea(
     final tableOnFile=true,
     final tableName="tab1",
@@ -343,22 +347,23 @@ protected
     annotation (Placement(transformation(extent={{240,-220},{260,-200}})));
   IBPSA.Utilities.Time.ModelTime modTim "Model time"
     annotation (Placement(transformation(extent={{-160,-10},{-140,10}})));
-  Modelica.Blocks.Math.Add add30Min
-    "Add 30 minutes to time to shift weather data reader"
+  Modelica.Blocks.Math.Add addTimeShift
+    "Add half a time step to time to shift weather data reader"
     annotation (Placement(transformation(extent={{-112,180},{-92,200}})));
-  Modelica.Blocks.Sources.Constant con30Min(final k=1800)
+  Modelica.Blocks.Sources.Constant conShift(final k=timeStep/2)
     "Constant used to shift weather data reader"
     annotation (Placement(transformation(extent={{-160,186},{-140,206}})));
   IBPSA.BoundaryConditions.WeatherData.BaseClasses.LocalCivilTime locTim(
       final lon=lon, final timZon=timZon) "Local civil time"
     annotation (Placement(transformation(extent={{-120,-160},{-100,-140}})));
-  Modelica.Blocks.Tables.CombiTable1Ds datRea30Min(
+  Modelica.Blocks.Tables.CombiTable1Ds datReaShift(
     final tableOnFile=true,
     final tableName="tab1",
     final fileName=filNam,
     verboseRead=false,
     final smoothness=Modelica.Blocks.Types.Smoothness.ContinuousDerivative,
-    final columns=9:11) "Data reader with 30 min offset for solar irradiation"
+    final columns=9:11)
+    "Data reader with half a timestep offset for solar irradiation"
     annotation (Placement(transformation(extent={{-50,180},{-30,200}})));
   IBPSA.BoundaryConditions.WeatherData.BaseClasses.ConvertTime conTimMin(final
       weaDatStaTim=timeSpan[1], final weaDatEndTim=timeSpan[2])
@@ -516,13 +521,13 @@ First implementation.
 
 equation
 
-  connect(modTim.y, add30Min.u2) annotation (Line(points={{-139,0},{-128,0},{-128,
-          184},{-114,184}}, color={0,0,127}));
-  connect(con30Min.y, add30Min.u1)
+  connect(modTim.y, addTimeShift.u2) annotation (Line(points={{-139,0},{-128,0},
+          {-128,184},{-114,184}}, color={0,0,127}));
+  connect(conShift.y, addTimeShift.u1)
     annotation (Line(points={{-139,196},{-114,196}}, color={0,0,127}));
-  connect(add30Min.y, conTimMin.modTim)
+  connect(addTimeShift.y, conTimMin.modTim)
     annotation (Line(points={{-91,190},{-82,190}}, color={0,0,127}));
-  connect(conTimMin.calTim, datRea30Min.u)
+  connect(conTimMin.calTim,datReaShift. u)
     annotation (Line(points={{-59,190},{-52,190}}, color={0,0,127}));
   connect(modTim.y, locTim.cloTim) annotation (Line(
       points={{-139,6.10623e-16},{-128,6.10623e-16},{-128,-150},{-122,-150}},
@@ -650,12 +655,12 @@ equation
   connect(horInfRadSel.uCon, HInfHor_in) annotation (Line(points={{119,78},{-174,
           78},{-174,-160},{-220,-160}},  color={0,0,127}));
 
-  connect(souSelRad.HDifHorFil, datRea30Min.y[3]) annotation (Line(points={{119,199},
+  connect(souSelRad.HDifHorFil,datReaShift. y[3]) annotation (Line(points={{119,199},
           {44,199},{44,190},{-29,190}}, color={0,0,127}));
   connect(souSelRad.HDifHorIn, HDifHor_in) annotation (Line(points={{119,196},{
           98,196},{98,166},{-170,166},{-170,-220},{-220,-220}},
                                                              color={0,0,127}));
-  connect(souSelRad.HDirNorFil, datRea30Min.y[2]) annotation (Line(points={{119,192},
+  connect(souSelRad.HDirNorFil,datReaShift. y[2]) annotation (Line(points={{119,192},
           {44,192},{44,190},{-29,190}}, color={0,0,127}));
   connect(souSelRad.HDirNorIn, HDirNor_in) annotation (Line(points={{119,188},{
           100,188},{100,160},{-168,160},{-168,-260},{-220,-260}},
@@ -666,7 +671,7 @@ equation
   connect(souSelRad.zen, zenAng.zen) annotation (Line(points={{124,179},{124,
           152},{-40,152},{-40,-216},{-49,-216}},
                                             color={0,0,127}));
-  connect(souSelRad.HGloHorFil, datRea30Min.y[1]) annotation (Line(points={{119,
+  connect(souSelRad.HGloHorFil,datReaShift. y[1]) annotation (Line(points={{119,
           184},{44,184},{44,190},{-29,190}}, color={0,0,127}));
 
   connect(TBlaSkyCom.HHorIR, limHorInfRad.HHorIR) annotation (Line(points={{238,
@@ -1503,7 +1508,8 @@ This only works correctly for weather files with equidistant time stamps.
 To read weather data from the TMY3 weather data file, there are
 two data readers in this model. One data reader obtains all data
 except solar radiation, and the other data reader reads only the
-solar radiation data, shifted by <i>30</i> minutes.
+solar radiation data, shifted by <i>half the average time interval</i> of the weather data.
+For a standard TMY3 file with 1h resolution the shift is thus 30 minutes.  
 The reason for this time shift is as follows:
 The TMY3 weather data file contains for solar radiation the
 \"...radiation received
@@ -1513,6 +1519,11 @@ the timestamp.\"
 
 Thus, as the figure below shows, a more accurate interpolation is obtained if
 time is shifted by <i>30</i> minutes prior to reading the weather data.
+
+While the model accomodates other time resolutions, it always assumes that 
+radiation values are expressed as average solar irradiance (W/m2) received during the period ending at the timestamp, 
+and that the file contains equidistant time stamps.
+
 </p>
 <p align=\"center\">
 <img alt=\"image\" src=\"modelica://IBPSA/Resources/Images/BoundaryConditions/WeatherData/RadiationTimeShift.png\"
@@ -1527,6 +1538,14 @@ Technical Report, NREL/TP-581-43156, revised May 2008.
 </ul>
 </html>", revisions="<html>
 <ul>
+<li>
+June 16, 2020, by Christina Protopapadaki:<br/>
+Replaced fixed 30min shift in solar radiation data reader with shift equal to
+half the time step, as defined from the average interval in the weather file.<br/>
+This adaptation allows reading weather files with resolution other than 1h, but assumes equidistant time stamps in the weather file.<br/>
+This is for
+<a href=\"https://github.com/ibpsa/modelica-ibpsa/issues/1375\">#1375</a>.
+</li>
 <li>
 August 20, 2019, by Filip Jorissen:<br/>
 Better clarified the meaning of <code>time</code> in the documentation.<br/>

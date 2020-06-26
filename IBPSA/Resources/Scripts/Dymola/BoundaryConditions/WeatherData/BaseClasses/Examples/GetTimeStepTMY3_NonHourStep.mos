@@ -1,0 +1,10 @@
+simulateModel("IBPSA.BoundaryConditions.WeatherData.BaseClasses.Examples.GetTimeStepTMY3_NonHourStep", method="dassl", tolerance=1e-006, resultFile="GetTimeStepTMY3_NonHourStep");
+createPlot(id=1, 
+position={0, 0, 1376, 701}, 
+y={"timeStep"}, 
+range={0.0, 1.0, 1600.0, 2000.0}, 
+autoerase=false, 
+grid=true, 
+filename = "GetTimeStepTMY3_NonHourStep.mat",
+colors={{28,108,200}});
+

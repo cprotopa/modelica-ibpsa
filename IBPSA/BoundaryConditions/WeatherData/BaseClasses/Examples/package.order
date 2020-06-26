@@ -12,3 +12,5 @@ GetTimeSpanTMY3_NonzeroStart
 LimitMin
 LocalCivilTime
 SolarTime
+GetTimeStepTMY3
+GetTimeStepTMY3_NonHourStep
